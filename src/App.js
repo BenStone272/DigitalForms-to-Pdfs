@@ -13,7 +13,8 @@ function App() {
   const [pdfDoc, setPdfDoc] = useState(null);
   const [currentform, setcurrentform] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
-
+  const [accountlist, setaccountlist] = useState([]);
+  const [data, setData] = useState([]);
   const [value1, setvalue1] = useState("testing value");
   const [value2, setvalue2] = useState("");
   const [value3, setvalue3] = useState("");
@@ -24,6 +25,23 @@ function App() {
   const [value8, setvalue8] = useState("");
   const [value9, setvalue9] = useState("");
   const [value10, setvalue10] = useState("");
+  useEffect(() => {
+    getData()
+      .then((retrievedData) => {
+        // Do something with the retrievedData
+        setData(retrievedData);
+        console.log(retrievedData);
+        let tmp = [];
+        for (let i = 0; i < retrievedData.length; i++) {
+          tmp.push(retrievedData[i].ID);
+        }
+        console.log(tmp);
+        setaccountlist(tmp);
+      })
+      .catch((error) => {
+        // Handle any errors that occurred during the fetch and processing
+      });
+  }, []);
 
   const handleFileChange1 = async (e) => {
     const file = e.target.files[0];
@@ -63,6 +81,25 @@ function App() {
       console.error("Error loading PDF:", error);
     }
   };
+  const loadForm = async (link) => {
+    const pdfURL = link; // Replace with the actual PDF URL
+
+    const response = await fetch(pdfURL);
+
+    if (response.ok) {
+      const pdfBytes = new Uint8Array(await response.arrayBuffer());
+
+      try {
+        const loadedPdfDoc = await PDFDocument.load(pdfBytes);
+        setPdfDoc(loadedPdfDoc);
+        console.log("PDF loaded successfully.");
+      } catch (error) {
+        console.error("Error loading PDF:", error);
+      }
+    } else {
+      console.error("Failed to fetch the PDF.");
+    }
+  };
 
   const fillFormField = async () => {
     if (!pdfDoc) {
@@ -90,7 +127,10 @@ function App() {
 
       // Save the modified PDF
       const modifiedPdfBytes = await pdfDoc.save();
-      downloadPDF(modifiedPdfBytes, "modified_pdf.pdf");
+      downloadPDF(
+        modifiedPdfBytes,
+        "modified_" + currentform + selectedAccount + ".pdf"
+      );
     }
     if (currentform == "b") {
       let value1Field = form.getField("value12");
@@ -108,7 +148,10 @@ function App() {
 
       // Save the modified PDF
       const modifiedPdfBytes = await pdfDoc.save();
-      downloadPDF(modifiedPdfBytes, "modified_pdf.pdf");
+      downloadPDF(
+        modifiedPdfBytes,
+        "modified_" + currentform + selectedAccount + ".pdf"
+      );
     }
     if (currentform == "c") {
       let value1Field = form.getField("value12");
@@ -126,7 +169,10 @@ function App() {
 
       // Save the modified PDF
       const modifiedPdfBytes = await pdfDoc.save();
-      downloadPDF(modifiedPdfBytes, "modified_pdf.pdf");
+      downloadPDF(
+        modifiedPdfBytes,
+        "modified_" + currentform + selectedAccount + ".pdf"
+      );
     }
   };
 
@@ -154,11 +200,28 @@ function App() {
   function handleFormChange(e, func) {
     func(e.target.value);
   }
+  function setValues(item) {
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].ID == item) {
+        setvalue1(data[i].value1);
+        setvalue2(data[i].value2);
+        setvalue3(data[i].value3);
+        setvalue4(data[i].value4);
+        setvalue5(data[i].value5);
+        setvalue6(data[i].value6);
+        setvalue7(data[i].value7);
+        setvalue8(data[i].value8);
+        setvalue9(data[i].value9);
+        setvalue10(data[i].value10);
+      }
+    }
+  }
 
   return (
     <UserContext.Provider
       value={{
         setcurrentform,
+        data,
         selectedAccount,
         value1,
         setvalue1,
@@ -189,6 +252,8 @@ function App() {
             <Dropdown
               setSelectedAccount={setSelectedAccount}
               selectedAccount={selectedAccount}
+              accountlist={accountlist}
+              setValues={setValues}
             />
           }
         />
@@ -198,6 +263,7 @@ function App() {
             <FormA
               handleFileChange1={handleFileChange1}
               handleFileChange={handleFileChange}
+              loadForm={loadForm}
               getPDFFieldNames={getPDFFieldNames}
               fillFormField={fillFormField}
             />
@@ -210,6 +276,7 @@ function App() {
               handleFileChange1={handleFileChange1}
               handleFileChange={handleFileChange}
               getPDFFieldNames={getPDFFieldNames}
+              loadForm={loadForm}
               fillFormField={fillFormField}
             />
           }
@@ -221,6 +288,7 @@ function App() {
               handleFileChange1={handleFileChange1}
               handleFileChange={handleFileChange}
               getPDFFieldNames={getPDFFieldNames}
+              loadForm={loadForm}
               fillFormField={fillFormField}
             />
           }
@@ -235,7 +303,7 @@ export default App;
 function Dropdown(props) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
-  let items = [
+  let items1 = [
     //this will be changed when data is loaded to be all names from DB
     "Account1",
     "Account2",
@@ -248,7 +316,7 @@ function Dropdown(props) {
     "Account9",
     "Account10",
   ];
-
+  let items = props.accountlist;
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
   };
@@ -256,6 +324,7 @@ function Dropdown(props) {
   const handleItemClick = (item) => {
     console.log(`Clicked item: ${item}`);
     props.setSelectedAccount(item);
+    props.setValues(item);
     console.log(props.selectedAccount);
     setIsOpen(false);
   };
@@ -291,4 +360,30 @@ function Dropdown(props) {
       </div>
     </div>
   );
+}
+
+async function getData() {
+  const lambdaEndpoint =
+    "https://4n3jkaie80.execute-api.us-east-1.amazonaws.com/dev"; // Replace with your Lambda API endpoint URL
+
+  try {
+    const response = await fetch(lambdaEndpoint, {
+      method: "GET", // Use GET method to invoke Lambda function
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Request failed.");
+    }
+
+    const data = await response.json();
+    // You can now work with the 'data' variable as needed
+    //console.log(data);
+    return data; // Return the data if needed
+  } catch (error) {
+    console.error("Error:", error);
+    // Handle errors here
+  }
 }
