@@ -15,7 +15,7 @@ function App() {
   const [selectedAccount, setSelectedAccount] = useState("");
   const [accountlist, setaccountlist] = useState([]);
   const [data, setData] = useState([]);
-  const [value1, setvalue1] = useState("testing value");
+  const [value1, setvalue1] = useState("");
   const [value2, setvalue2] = useState("");
   const [value3, setvalue3] = useState("");
   const [value4, setvalue4] = useState("");
@@ -25,6 +25,18 @@ function App() {
   const [value8, setvalue8] = useState("");
   const [value9, setvalue9] = useState("");
   const [value10, setvalue10] = useState("");
+  function resetValues() {
+    setvalue1("");
+    setvalue2("");
+    setvalue3("");
+    setvalue4("");
+    setvalue5("");
+    setvalue6("");
+    setvalue7("");
+    setvalue8("");
+    setvalue9("");
+    setvalue10("");
+  }
   useEffect(() => {
     getData()
       .then((retrievedData) => {
@@ -254,6 +266,7 @@ function App() {
               selectedAccount={selectedAccount}
               accountlist={accountlist}
               setValues={setValues}
+              resetValues={resetValues}
             />
           }
         />
@@ -303,6 +316,7 @@ export default App;
 function Dropdown(props) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [showDiv, setShowDiv] = useState(false);
   let items1 = [
     //this will be changed when data is loaded to be all names from DB
     "Account1",
@@ -320,6 +334,10 @@ function Dropdown(props) {
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
   };
+  const toggleDiv = () => {
+    setShowDiv(!showDiv);
+    console.log("toggle");
+  };
 
   const handleItemClick = (item) => {
     console.log(`Clicked item: ${item}`);
@@ -334,15 +352,39 @@ function Dropdown(props) {
       item.toUpperCase().includes(search.toUpperCase())
     );
   };
+  const CreateNewDiv = () => {
+    const [inputValue, setInputValue] = useState("");
+    return (
+      <div id="createNewDiv">
+        <input
+          id="newAccountButton"
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)} // Update inputValue on input change
+        />
+        <button
+          onClick={(e) =>
+            AddData(inputValue, props.setSelectedAccount, props.resetValues)
+          }>
+          Create
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="centered-container">
-      <h2>Dropdown</h2>
+      <h1>
+        {props.selectedAccount
+          ? "Currently Selected " + props.selectedAccount
+          : "Select Account"}
+      </h1>
 
       <div className="dropdown">
         <button onClick={toggleDropdown} className="dropbtn">
-          Select Account
+          Select Existing Account
         </button>
+
         <div className={`dropdown-content ${isOpen ? "show" : ""}`}>
           <input
             type="text"
@@ -357,6 +399,12 @@ function Dropdown(props) {
             </a>
           ))}
         </div>
+        <br></br>
+        <button onClick={toggleDiv} className="dropbtn">
+          Create New
+        </button>
+        <br></br>
+        {showDiv && <CreateNewDiv />}
       </div>
     </div>
   );
@@ -386,4 +434,40 @@ async function getData() {
     console.error("Error:", error);
     // Handle errors here
   }
+}
+
+function AddData(inputValue, setSelectedAccount, resetValues) {
+  const lambdaEndpoint =
+    "https://4n3jkaie80.execute-api.us-east-1.amazonaws.com/dev";
+
+  const requestData = {
+    ID: inputValue,
+    debugVal: "",
+  };
+
+  fetch(lambdaEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestData),
+  })
+    .then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error("Request failed.");
+      }
+    })
+    .then((data) => {
+      console.log("Lambda Response:", data);
+      setSelectedAccount(inputValue);
+      resetValues();
+
+      // Handle the Lambda response here
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      // Handle errors here
+    });
 }
